@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nor Zvartnots Hayat — карта</title>
+<meta name="description" content="Карта проекта Nor Zvartnots Hayat: участки, 3D-макет квартала, окружение — Вагаршапат">
+<link rel="manifest" href="manifest.webmanifest?v=6">
+<meta name="theme-color" content="#0d3a5c">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png?v=6">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Nor Zvartnots Hayat">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Nor Zvartnots Hayat — карта проекта">
+<meta property="og:description" content="Участки, 3D-макет квартала и окружение — Вагаршапат">
+<meta property="og:url" content="https://grigorysaak.github.io/vagharshapat-map/">
+<meta property="og:image" content="https://grigorysaak.github.io/vagharshapat-map/icons/preview.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="lib/maplibre/maplibre-gl.css">
+<script src="lib/maplibre/maplibre-gl.js"></script>
+<style>
+  html, body { margin:0; height:100%; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  #map { position:absolute; inset:0; }
+  .card { background:rgba(255,255,255,.94); border-radius:12px; box-shadow:0 4px 18px rgba(0,0,0,.25); color:#222; }
+
+  /* --- Панель управления картой (слева) --- */
+  #panel { position:absolute; top:12px; left:12px; z-index:2; width:290px; max-width:calc(100vw - 160px);
+    max-height:calc(100vh - 60px); overflow:auto; padding:12px 14px; font-size:14px; }
+  #panel .head { display:flex; align-items:flex-start; gap:8px; position:sticky; top:-12px; z-index:1; background:rgba(255,255,255,.97); margin:-12px -14px 0; padding:12px 14px 4px; border-radius:12px 12px 0 0; }
+  #panel h1 { font-size:15px; margin:0; flex:1; }
+  #panel .sub { font-size:12px; color:#666; margin:2px 0 8px; }
+  #toggle { border:0; background:#eef2f5; border-radius:8px; width:30px; height:28px; font-size:16px; cursor:pointer; flex:none; }
+  .tgw { display:flex; flex-direction:column; align-items:center; gap:2px; flex:none; cursor:pointer; }
+  #tgCap { font-size:10px; line-height:1.1; color:#1f5f8b; white-space:nowrap; user-select:none; -webkit-user-select:none; }
+  #panel.collapsed #tgCap { font-weight:600; }
+  #panel.collapsed { width:auto; padding:8px 10px; }
+  #panel.collapsed .body, #panel.collapsed .sub, #panel.collapsed .addr { display:none; }
+  .addr { font-size:12px; color:#333; margin:0 0 6px; line-height:1.35; }
+  .sec { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#1f5f8b; margin:12px 0 4px; font-weight:600; }
+  .row { display:flex; justify-content:space-between; gap:8px; padding:5px 6px; margin:0 -6px; border-radius:6px; cursor:pointer; font-size:13px; }
+  .row:hover { background:#eef4f8; }
+  .row.sel { background:#fff3b0; }
+  .row .v { color:#555; white-space:nowrap; }
+  .row.total { cursor:default; font-weight:600; border-top:1px solid #ddd; border-radius:0; margin-top:2px; padding-top:6px; }
+  .row.total:hover { background:none; }
+  #panel label { display:flex; align-items:center; gap:8px; padding:4px 0; cursor:pointer; font-size:13.5px; }
+  #panel input[type=checkbox] { width:18px; height:18px; }
+  .btns { display:flex; flex-wrap:wrap; gap:6px; }
+  .btns button { border:0; background:#1f5f8b; color:#fff; padding:7px 10px; border-radius:8px; font-size:13px; cursor:pointer; }
+  .btns button:active { background:#14425f; }
+
+  /* --- Джойстик (справа вверху) --- */
+  #joy { position:absolute; top:12px; right:12px; z-index:2; padding:7px; user-select:none; -webkit-user-select:none; touch-action:none; }
+  #joy .top { display:flex; gap:5px; align-items:stretch; }
+  #joy { --s:72px; }
+  #pad { --s:72px; width:var(--s); height:var(--s); border-radius:50%; position:relative; cursor:grab;
+    background:radial-gradient(circle, #f4f7f9 0 40%, #d7e3ec 41% 100%); box-shadow:inset 0 0 0 1px #b9c9d6; touch-action:none; }
+  #pad .hint { display:none; }
+  #pad .hint b { position:absolute; font-weight:400; }
+  #stick { position:absolute; width:44%; height:44%; left:28%; top:28%; border-radius:50%; background:#1f5f8b;
+    box-shadow:0 2px 6px rgba(0,0,0,.35); cursor:move; touch-action:none; display:flex; align-items:center; justify-content:center; color:#fff; font-size:9px; }
+  #tiltBox { display:flex; flex-direction:column; align-items:center; justify-content:space-between; font-size:8px; color:#5a7488; width:20px; }
+  #tilt { writing-mode:vertical-lr; width:14px; flex:1; min-height:60px; margin:3px 0; cursor:pointer; }
+  #joy .lcol { display:flex; flex-direction:column; gap:4px; width:var(--s); }
+  #joy .bot { display:flex; gap:3px; }
+  #joy .bot button { flex:1; }
+  #joy .bot button { border:0; background:#eef2f5; border-radius:6px; height:20px; min-width:20px; font-size:12px; cursor:pointer; padding:0 3px; }
+  #joy .bot button:active { background:#d7e3ec; }
+  #home { background:#1f5f8b !important; color:#fff; font-size:10px !important; padding:0 5px !important; }
+  #north span, #mNorth span { display:inline-block; color:#c0392b; font-size:13px; transition:transform .1s; }
+  #joyMin, #joyMove { position:absolute; top:-6px; left:-6px; width:20px; height:20px; border-radius:50%; border:0; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.3); font-size:12px; cursor:pointer; }
+  #joyMove { left:auto; right:-6px; cursor:grab; touch-action:none; }
+  #joy.collapsed .top, #joy.collapsed .bot, #joy.collapsed #joyMove { display:none; }
+  #joy.collapsed { padding:0; }
+  #joy.collapsed #joyMin { position:static; width:36px; height:36px; font-size:18px; }
+
+  /* --- Телефон (класс phone ставится сам по размеру экрана) --- */
+  #mbar { display:none; }
+  body.phone #joy { display:none; }
+  body.phone #mbar { display:flex; flex-direction:column; gap:6px; position:absolute; top:8px; right:8px; z-index:3; padding:5px; }
+  #mbar button { width:42px; height:40px; border:0; border-radius:9px; background:#eef2f5; font-size:14px; font-weight:600; color:#1f5f8b; cursor:pointer; padding:0; }
+  #mbar #mHome { background:#1f5f8b; color:#fff; font-size:11px; }
+  body.phone #panel { top:8px; left:8px; width:auto; max-width:calc(100vw - 106px); max-height:calc(100vh - 70px); max-height:calc(100dvh - 70px); padding:10px 12px; font-size:13px; }
+  body.phone #panel .head { top:-10px; margin:-10px -12px 0; padding:10px 12px 4px; }
+  body.phone #toggle { width:40px; height:36px; font-size:18px; }
+  #toast { position:fixed; left:50%; bottom:34px; transform:translateX(-50%); z-index:10; background:rgba(30,30,30,.88); color:#fff;
+    padding:8px 14px; border-radius:10px; font-size:13px; max-width:86vw; text-align:center; opacity:0; transition:opacity .3s; pointer-events:none; }
+  #toast.on { opacity:1; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="panel" class="card">
+  <div class="head">
+    <h1>Nor Zvartnots Hayat</h1>
+    <div class="tgw"><button id="toggle" title="Свернуть / развернуть панель">—</button><span id="tgCap">скрыть панель</span></div>
+  </div>
+  <div class="sub">Вагаршапат · карта проекта</div>
+  <div class="addr">ՀՀ, Արմավիրի մարզ, ք. Էջմիածին, Զվարթնոց համ.<br>РА, Армавирская обл., г. Эчмиадзин, Звартноц<br>у Маргарского шоссе (М-3)</div>
+  <div class="body">
+    <div class="sec">Участки</div>
+    <div id="plots"></div>
+    <div class="sec">Слои</div>
+    <label><input type="checkbox" id="chk3d" checked> 3D-макет проекта <span id="st3d" style="font-size:11px;color:#888"></span></label>
+    <label><input type="checkbox" id="chkLm" checked> Ориентиры и расстояния</label>
+    <label><input type="checkbox" id="chkNoah"> NOAH Park — стадион и парк</label>
+    <div class="sec">Виды</div>
+    <div class="btns">
+      <button data-view="ararat">Вид на Арарат</button>
+    </div>
+    <div class="sec">Солнце</div>
+    <div class="btns"><button id="sunBtn">☀ Солнце: день</button><button id="sunReset" style="display:none;background:#8a8f94">✕ Сброс</button></div>
+    <input type="range" id="sunTime" step="1" style="display:none;width:100%;margin-top:8px">
+    <div id="sunInfo" style="font-size:12px;color:#555;margin-top:6px;line-height:1.35"></div>
+    <div class="sec">Ориентиры</div>
+    <div id="list"></div>
+    <div class="sec">Приложение</div>
+    <div class="btns"><button id="appInstall">⬇ Установить иконку</button><button id="appShare">↗ Поделиться</button><button id="appCopy">⧉ Копировать ссылку</button></div>
+    <div id="appLink" style="font-size:11px;color:#1f5f8b;margin-top:6px;word-break:break-all;user-select:all;-webkit-user-select:all"></div>
+    <div id="appHint" style="display:none;font-size:12px;color:#444;margin-top:6px;line-height:1.35"></div>
+  </div>
+</div>
+
+<div id="joy" class="card">
+  <button id="joyMin" title="Свернуть / развернуть джойстик">✥</button>
+  <button id="joyMove" title="Перетащить джойстик">⠿</button>
+  <div class="top">
+    <div class="lcol">
+      <div id="pad" title="Круг в центре — двигать карту. Кольцо — вращать.">
+        <div class="hint"><b style="top:3px;left:50%;transform:translateX(-50%)">↻ вращать</b></div>
+        <div id="stick">✥</div>
+      </div>
+      <div class="bot">
+        <button id="home" title="Вернуться к участку">Домой</button>
+        <button id="north" title="Север вверх"><span>▲</span></button>
+      </div>
+      <div class="bot">
+        <button id="zin" title="Приблизить">+</button>
+        <button id="zout" title="Отдалить">−</button>
+      </div>
+    </div>
+    <div id="tiltBox" title="Наклон: вверху — вид сверху, внизу — вид сбоку">
+      <span>сверху</span>
+      <input type="range" id="tilt" min="0" max="85" step="1" value="55">
+      <span>сбоку</span>
+    </div>
+  </div>
+</div>
+<div id="mbar" class="card">
+  <button id="mHome" title="Вернуться к участку">Домой</button>
+  <button id="mNorth" title="Север вверх"><span>▲</span></button>
+  <button id="mTilt" title="Вид сверху / 3D">2D</button>
+</div>
+<div id="toast"></div>
+<script>
+// короткие всплывающие сообщения
+let toastT = null;
+function toast(msg, ms) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms || 4000); }
+if (!window.maplibregl) { toast('Карта не загрузилась. Обновите страницу', 600000); throw new Error('maplibre'); }
+// режим телефона: узкий экран или телефон боком — определяется сам, в том числе при повороте
+const phoneMQ = matchMedia('(max-width:600px), (max-height:500px) and (pointer:coarse)');
+const isPhone = () => phoneMQ.matches;
+document.body.classList.toggle('phone', isPhone());
+const store = { get(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch(e) {} } };
+const SITE = [44.299098, 40.150154];         // центр участка (точка ТЗ + та же поправка, что у участков)
+// кадастр (пересчёт TM 45°, k=1, 8 500 000 + поправка dE −1,0 м, dN −72,8 м по полям на снимке, см. документ проекта)
+const CADASTRE = [
+  { id:'u9',  name:'уч. 9',  num:'04-002-0305-0009', area:'0,75 га', c:[[44.2980058,40.1502506],[44.2980261,40.1502542],[44.2983119,40.1505111],[44.2992472,40.1498979],[44.3001056,40.1493494],[44.2998258,40.1490978]] },
+  { id:'u11', name:'уч. 11', num:'04-002-0305-0011', area:'0,46 га', c:[[44.298251,40.1505875],[44.2987659,40.150895],[44.2995003,40.1501245],[44.2992326,40.1499438]] },
+  { id:'u27', name:'уч. 27', num:'04-002-0305-0027', area:'0,50 га', c:[[44.2987659,40.150895],[44.299383,40.1511553],[44.2998742,40.1503623],[44.2994638,40.1501628]] },
+  { id:'pol', name:'полоса 9–11', num:'', area:'330 м²', strip:true, c:[[44.2983119,40.1505111],[44.298251,40.1505875],[44.2992326,40.1499438],[44.2992472,40.1498979]] }
+];
+const LANDMARKS = [
+  { id:'ech',  name:'Собор Эчмиадзина',          lng:44.29096, lat:40.16196, car:true, info:'2,8 км · 5 мин' },
+  { id:'noah', name:'Стадион NOAH Park',          lng:44.3028525, lat:40.1471943, car:true, info:'961 м · 4 мин' },   // центр поля по генплану Noah Park (видео)
+  { id:'zvt',  name:'Храм Звартноц',              lng:44.33720, lat:40.15990, car:true, info:'4,8 км · 8 мин' },
+  { id:'evn',  name:'Аэропорт Звартноц',          lng:44.39590, lat:40.14730, car:true, info:'11,3 км · 16 мин' },
+  { id:'yer',  name:'Центр Еревана (пл. Республики)', lng:44.51259, lat:40.17772, car:true, info:'20,4 км · 26 мин' },
+  { id:'masis',name:'Масис (Большой Арарат)',     lng:44.29833, lat:39.70194, car:false },
+  { id:'sis',  name:'Сис (Малый Арарат)',         lng:44.41000, lat:39.65000, car:false }
+];
+
+// --- геометрия ---
+const R = 6371008.8, rad = d => d*Math.PI/180;
+function distKm(a, b) {
+  const dLat = rad(b[1]-a[1]), dLng = rad(b[0]-a[0]);
+  const h = Math.sin(dLat/2)**2 + Math.cos(rad(a[1]))*Math.cos(rad(b[1]))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h))/1000;
+}
+// смещение от точки в метрах по азимуту
+function offset(p, azDeg, m) {
+  const mLat = 111320, mLng = 111320*Math.cos(rad(p[1]));
+  return [p[0] + m*Math.sin(rad(azDeg))/mLng, p[1] + m*Math.cos(rad(azDeg))/mLat];
+}
+const centroid = c => [c.reduce((s,p)=>s+p[0],0)/c.length, c.reduce((s,p)=>s+p[1],0)/c.length];
+const fmtKm = k => k < 1 ? Math.round(k*1000) + ' м' : k.toFixed(1).replace('.', ',') + ' км';
+// время на машине — по дорогам (OSRM), получено один раз 18.11.2026 и записано в LANDMARKS; горы — расстояние по прямой
+LANDMARKS.forEach(l => { if (!l.car) l.info = fmtKm(distKm(SITE,[l.lng,l.lat])) + ' · вид с участка'; });
+
+function landmarkData() {
+  return {
+    lines: { type:'FeatureCollection', features: LANDMARKS.map(l => ({
+      type:'Feature', properties:{ id:l.id, mountain: !l.car },
+      geometry:{ type:'LineString', coordinates:[SITE, [l.lng,l.lat]] } })) },
+    points: { type:'FeatureCollection', features: LANDMARKS.map(l => ({
+      type:'Feature', properties:{ id:l.id, label: l.name + '\n' + (l.info || fmtKm(distKm(SITE,[l.lng,l.lat]))) },
+      geometry:{ type:'Point', coordinates:[l.lng,l.lat] } })) }
+  };
+}
+
+// --- панель: ориентиры (нажатие — перелёт к ориентиру) ---
+function renderList() {
+  const el = document.getElementById('list');
+  el.innerHTML = LANDMARKS.map(l =>
+    '<div class="row" data-lm="' + l.id + '"><span>' + l.name + '</span><span class="v">' + (l.info || fmtKm(distKm(SITE,[l.lng,l.lat]))) + '</span></div>'
+  ).join('');
+  el.querySelectorAll('[data-lm]').forEach(r => r.onclick = () => {
+    const l = LANDMARKS.find(x => x.id === r.dataset.lm);
+    map.flyTo({ center:[l.lng, l.lat], zoom: l.car ? 15.5 : 11.5, pitch:60, duration:2500, essential:true });
+  });
+}
+
+// --- панель: участки (нажатие — подсветка и подлёт) ---
+let selPlot = null;
+function renderPlots() {
+  const el = document.getElementById('plots');
+  el.innerHTML = CADASTRE.map(p =>
+    '<div class="row" data-plot="' + p.id + '"><span>' + (p.num ? p.num : p.name) + '</span><span class="v">' + (p.num ? p.name + ' · ' : '') + p.area + '</span></div>'
+  ).join('') + '<div class="row total"><span>Итого</span><span class="v">1,71 га + полоса 330 м²</span></div>';
+  el.querySelectorAll('[data-plot]').forEach(r => r.onclick = () => selectPlot(r.dataset.plot === selPlot ? null : r.dataset.plot));
+}
+function selectPlot(id) {
+  selPlot = id;
+  document.querySelectorAll('[data-plot]').forEach(r => r.classList.toggle('sel', r.dataset.plot === id));
+  if (map.getLayer('plot-sel')) map.setFilter('plot-sel', ['==', ['get','id'], id || '']);
+  if (id) { const p = CADASTRE.find(x => x.id === id);
+    map.flyTo({ center: centroid(p.c), zoom: 17.8, duration:1500, essential:true }); }
+}
+
+// --- карта ---
+const HOME = { center:SITE, zoom:17, pitch:55, bearing:-40 };
+const map = new maplibregl.Map({
+  container: 'map',
+  ...HOME, maxPitch: 85,
+  style: {
+    version: 8,
+    glyphs: location.href.replace(/[?#].*$/, '').replace(/[^/]*$/, '') + 'lib/fonts/{fontstack}/{range}.pbf',   // свой шрифт подписей
+    sources: {
+      sat: { type:'raster', tileSize:256, maxzoom:19,
+        tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        attribution:'Снимок © Esri, Maxar, Earthstar Geographics' },
+      dem: { type:'raster-dem', tileSize:256, maxzoom:15, encoding:'terrarium',
+        tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+        attribution:'Рельеф: AWS Terrain Tiles' }
+    },
+    layers: [
+      { id:'sat', type:'raster', source:'sat' }
+    ],
+    sky: { 'sky-color':'#6aa6e0', 'horizon-color':'#cfe2f5', 'fog-color':'#cfe2f5', 'sky-horizon-blend':0.5, 'horizon-fog-blend':0.05, 'fog-ground-blend':1, 'atmosphere-blend':0 },
+    terrain: { source:'dem', exaggeration:1.0 }
+  }
+});
+map.addControl(new maplibregl.ScaleControl({ unit:'metric' }), 'bottom-right');
+const errSeen = {};
+map.on('error', e => { const id = e.sourceId; if (!id || errSeen[id]) return; errSeen[id] = true;
+  if (id === 'sat') toast('Снимок местности не загрузился. Проверьте интернет');
+  else if (id === 'dem') toast('Рельеф не загрузился — карта плоская'); });
+
+// порядок слоёв снизу вверх: снимок → дороги → названия (подложка) → заливка участков → Квартал 3D →
+// граница участков → подсветка выбранного → линии ориентиров → точки → подписи
+map.on('load', () => {
+  const d = landmarkData();
+  map.addSource('plot', { type:'geojson', data:{ type:'FeatureCollection', features: CADASTRE.map(p => ({ type:'Feature', properties:{ id:p.id, strip:!!p.strip }, geometry:{ type:'Polygon', coordinates:[[...p.c, p.c[0]]] } })) } });
+  map.addSource('lmLines', { type:'geojson', data:d.lines });
+  map.addSource('lmPoints', { type:'geojson', data:d.points });
+
+  map.addLayer({ id:'plot-fill', type:'fill', source:'plot', paint:{ 'fill-color':['case',['get','strip'],'#ffffff','#ffd400'], 'fill-opacity':['case',['get','strip'],0.35,0.18] } });
+  // NOAH Park: генплан картинкой (плоско, на земле), привязан к снимку; лежит под границами участков и под 3D-макетом
+  map.addSource('noahPlan', { type:'image', url:'noah-plan.webp?v=6', coordinates:[[44.2952295, 40.1510021], [44.3048898, 40.1509977], [44.3048856, 40.1453651], [44.2952252, 40.1453695]] });
+  map.addLayer({ id:'noah-plan', type:'raster', source:'noahPlan', layout:{ visibility: document.getElementById('chkNoah').checked ? 'visible' : 'none' }, paint:{ 'raster-fade-duration':0 } });
+  map.addLayer({ id:'plot-line', type:'line', source:'plot', paint:{ 'line-color':'#ffd400', 'line-width':2.5 } });
+  map.addLayer({ id:'plot-sel', type:'line', source:'plot', filter:['==', ['get','id'], ''], paint:{ 'line-color':'#ffffff', 'line-width':5 } });
+  map.addLayer({ id:'lm-lines', type:'line', source:'lmLines',
+    paint:{ 'line-color':['case',['get','mountain'],'#ffffff','#ff5a36'], 'line-width':2.5, 'line-dasharray':[3,2], 'line-opacity':0.9 } });
+  map.addLayer({ id:'lm-dots', type:'circle', source:'lmPoints',
+    paint:{ 'circle-radius':6, 'circle-color':'#ff5a36', 'circle-stroke-color':'#fff', 'circle-stroke-width':2 } });
+  map.addLayer({ id:'lm-labels', type:'symbol', source:'lmPoints',
+    layout:{ 'text-field':['get','label'], 'text-font':['Open Sans Semibold'], 'text-size':13, 'text-offset':[0,-1.6], 'text-anchor':'bottom', 'text-allow-overlap':true },
+    paint:{ 'text-color':'#fff', 'text-halo-color':'#000', 'text-halo-width':1.6 } });
+
+  renderList();
+  applyLayers();
+  setTimeout(no3d, 15000);   // программа 3D так и не загрузилась
+});
+renderPlots();
+
+// --- слои и виды ---
+const vis = (ids, on) => ids.forEach(id => map.getLayer(id) && map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'));
+// ориентиры: при включении кадр охватывает участок и все ориентиры, кроме Масиса и Сиса
+function fitLandmarks() {
+  const pts = [SITE, ...LANDMARKS.filter(l => l.car).map(l => [l.lng, l.lat])];
+  const b = pts.reduce((bb, p) => bb.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
+  const phone = isPhone(), open = !panel.classList.contains('collapsed');
+  const pad = phone ? { top:70, bottom:50, left:30, right:70 } : { top:70, bottom:60, left: open ? 470 : 110, right:230 };
+  map.fitBounds(b, { padding:pad, bearing:0, pitch:45, duration:2500, essential:true });
+}
+document.getElementById('chkLm').onchange = e => { vis(['lm-lines','lm-dots','lm-labels'], e.target.checked); if (e.target.checked) fitLandmarks(); };
+// NOAH Park: при включении — кадр «наш участок + стадион и парк»
+document.getElementById('chkNoah').onchange = e => {
+  const on = e.target.checked; vis(['noah-plan'], on);
+  if (!on) return;
+  const phone = isPhone(), open = !panel.classList.contains('collapsed');
+  const pad = phone ? { top:70, bottom:50, left:30, right:70 } : { top:70, bottom:60, left: open ? 470 : 110, right:160 };
+  map.fitBounds([[44.2952, 40.1453], [44.3049, 40.1512]], { padding:pad, bearing:0, pitch:50, duration:2500, essential:true });
+};
+// правило слоёв: включён 3D-макет — границы участков не рисуются; выключен — видны
+function applyLayers() {
+  const on3d = document.getElementById('chk3d').checked;
+  vis(['kvartal3d'], on3d); vis(['plot-fill','plot-line','plot-sel'], !on3d);
+  if (on3d && window.kvLoad) window.kvLoad();
+}
+if (isPhone()) document.getElementById('chk3d').checked = false;   // на телефоне 3D — по нажатию
+const no3d = () => { if (document.getElementById('chk3d').checked && !window.kvLoad) toast('3D-макет недоступен. Обновите страницу'); };
+document.getElementById('chk3d').onchange = () => { applyLayers(); no3d(); };
+const VIEWS = {
+  ararat: { center:offset(SITE, 0, -300), zoom:13.2, pitch:80, bearing:180 }
+};
+document.querySelectorAll('[data-view]').forEach(b => b.onclick = () =>
+  map.flyTo({ ...VIEWS[b.dataset.view], duration:2500, essential:true }));
+
+// --- свернуть панель и джойстик ---
+const panel = document.getElementById('panel'), tg = document.getElementById('toggle');
+const joy = document.getElementById('joy'), jm = document.getElementById('joyMin'), cap = document.getElementById('tgCap');
+const panelKey = () => isPhone() ? 'panelPhone' : 'panelPC';
+// постоянная подпись под кнопкой панели (и на телефоне, и на компьютере); нажатие на подпись = нажатие на кнопку
+cap.onclick = () => tg.click();
+function setPanel(c, byUser) {
+  panel.classList.toggle('collapsed', c); tg.textContent = c ? '☰' : '—'; cap.textContent = c ? 'открыть панель' : 'скрыть панель'; fixOverlap();
+  if (byUser) store.set(panelKey(), c ? '1' : '0');
+}
+tg.onclick = () => setPanel(!panel.classList.contains('collapsed'), true);
+jm.onclick = () => { joy.classList.toggle('collapsed'); fixOverlap(); };
+// начальное состояние: запомненное, иначе на телефоне свёрнута
+function initPanel() { const v = store.get(panelKey()); setPanel(v == null ? isPhone() : v === '1'); }
+initPanel();
+phoneMQ.addEventListener('change', () => { document.body.classList.toggle('phone', isPhone()); initPanel(); });
+// компьютер: джойстик можно перетащить за ⠿; положение запоминается
+const joyMove = document.getElementById('joyMove');
+function placeJoy(x, y) {
+  const w = joy.offsetWidth, h = joy.offsetHeight;
+  x = Math.max(6, Math.min(x, innerWidth - w - 6)); y = Math.max(6, Math.min(y, innerHeight - h - 6));
+  joy.style.left = x + 'px'; joy.style.top = y + 'px'; joy.style.right = 'auto';
+}
+joyMove.addEventListener('pointerdown', e => {
+  e.preventDefault(); joyMove.setPointerCapture(e.pointerId);
+  const r = joy.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+  const mv = ev => placeJoy(ev.clientX - dx, ev.clientY - dy);
+  const up = () => { joyMove.removeEventListener('pointermove', mv); joyMove.removeEventListener('pointerup', up);
+    const q = joy.getBoundingClientRect(); store.set('joyPos', Math.round(q.left) + ',' + Math.round(q.top)); fixOverlap(); };
+  joyMove.addEventListener('pointermove', mv); joyMove.addEventListener('pointerup', up);
+});
+const jp = store.get('joyPos'); if (jp) { const [x, y] = jp.split(',').map(Number); placeJoy(x, y); }
+// панель и джойстик не должны перекрываться: если налезают — джойстик сворачивается в ✥
+function fixOverlap() {
+  if (isPhone() || panel.classList.contains('collapsed') || joy.classList.contains('collapsed')) return;
+  const a = panel.getBoundingClientRect(), b = joy.getBoundingClientRect();
+  if (a.right > b.left - 4 && b.right > a.left && a.bottom > b.top && b.bottom > a.top) joy.classList.add('collapsed');
+}
+addEventListener('resize', () => { if (joy.style.left) placeJoy(parseFloat(joy.style.left), parseFloat(joy.style.top)); fixOverlap(); });
+fixOverlap();
+
+// --- джойстик ---
+const pad = document.getElementById('pad'), stick = document.getElementById('stick'), tilt = document.getElementById('tilt');
+let panVec = null, panRaf = null, ringAng = null;
+const padGeom = () => { const r = pad.getBoundingClientRect(); return { cx:r.left + r.width/2, cy:r.top + r.height/2, R:r.width/2 }; };
+function panLoop() {
+  if (!panVec) { panRaf = null; return; }
+  const sp = 14;   // пикселей за кадр при полном отклонении
+  map.panBy([panVec[0]*sp, panVec[1]*sp], { duration:0 });
+  panRaf = requestAnimationFrame(panLoop);
+}
+pad.addEventListener('pointerdown', e => {
+  e.preventDefault(); pad.setPointerCapture(e.pointerId);
+  const g = padGeom(), dx = e.clientX - g.cx, dy = e.clientY - g.cy, d = Math.hypot(dx, dy);
+  if (d <= g.R * 0.36) { panVec = [0, 0]; movePan(e); if (!panRaf) panRaf = requestAnimationFrame(panLoop); }
+  else ringAng = Math.atan2(dy, dx);
+});
+function movePan(e) {
+  const g = padGeom(), max = g.R * 0.55;
+  let dx = e.clientX - g.cx, dy = e.clientY - g.cy; const d = Math.hypot(dx, dy);
+  if (d > max) { dx *= max/d; dy *= max/d; }
+  stick.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+  panVec = [dx/max, dy/max];
+}
+pad.addEventListener('pointermove', e => {
+  if (panVec) return movePan(e);
+  if (ringAng != null) {
+    const g = padGeom(), a = Math.atan2(e.clientY - g.cy, e.clientX - g.cx);
+    let da = a - ringAng; if (da > Math.PI) da -= 2*Math.PI; if (da < -Math.PI) da += 2*Math.PI;
+    map.setBearing(map.getBearing() - da*180/Math.PI); ringAng = a;
+  }
+});
+const endPad = () => { panVec = null; ringAng = null; stick.style.transform = ''; };
+pad.addEventListener('pointerup', endPad); pad.addEventListener('pointercancel', endPad);
+tilt.addEventListener('input', () => map.setPitch(+tilt.value));
+document.getElementById('zin').onclick = () => map.zoomIn();
+document.getElementById('zout').onclick = () => map.zoomOut();
+document.getElementById('north').onclick = () => map.easeTo({ bearing:0, duration:600 });
+document.getElementById('home').onclick = () => { selectPlot(null); map.flyTo({ ...HOME, duration:2000, essential:true }); };
+// телефон: полоска «Домой / Север / 2D-3D»
+document.getElementById('mHome').onclick = () => document.getElementById('home').click();
+document.getElementById('mNorth').onclick = () => map.easeTo({ bearing:0, duration:600 });
+const mTilt = document.getElementById('mTilt'), mNorthIcon = document.querySelector('#mNorth span');
+mTilt.onclick = () => map.easeTo({ pitch: map.getPitch() > 10 ? 0 : 55, duration:700 });
+const northIcon = document.querySelector('#north span');
+const syncJoy = () => { tilt.value = Math.round(map.getPitch()); northIcon.style.transform = mNorthIcon.style.transform = 'rotate(' + (-map.getBearing()) + 'deg)';
+  mTilt.textContent = map.getPitch() > 10 ? '2D' : '3D'; };
+map.on('move', syncJoy); syncJoy();
+</script>
+<script type="importmap">{ "imports": { "three": "./lib/three/build/three.module.min.js", "three/addons/": "./lib/three/examples/jsm/" } }</script>
+<script type="module">
+// Квартал 3D: модель FreeCAD (kvartal3d.glb), координаты модели — метры от точки KV_ORIGIN (x восток, y вверх, z юг)
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+const KV_ORIGIN = [44.299098, 40.150154];
+const KV_PODNYAT = 0.3;   // м над рельефом, чтобы рельеф не «прокалывал» плоские элементы
+const KV_TOCHKI = [KV_ORIGIN, ...CADASTRE.slice(0, 3).flatMap(p => p.c)];
+const st = document.getElementById('st3d');
+const kvLayer = {
+  id: 'kvartal3d', type: 'custom', renderingMode: '3d',
+  onAdd(m, gl) {
+    this.camera = new THREE.Camera(); this.scene = new THREE.Scene();
+    this.amb = new THREE.AmbientLight(0xffffff, 1.6); this.scene.add(this.amb);
+    const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(-0.5, 1, 0.8); this.scene.add(sun);
+    const sun2 = new THREE.DirectionalLight(0xffffff, 0.8); sun2.position.set(0.6, 0.7, -0.6); this.scene.add(sun2);
+    this.sun = sun; this.sun2 = sun2;
+    // тени для кнопки «Солнце»: каждое тело проецируется на землю по направлению на солнце (видны только во время прохода)
+    this.shadowMat = new THREE.MeshBasicMaterial({ color:0x000000, transparent:true, opacity:0.35, depthWrite:true, depthFunc:THREE.LessDepth });
+    this.shadows = new THREE.Group(); this.shadows.visible = false; this.scene.add(this.shadows);
+    this.renderer = new THREE.WebGLRenderer({ canvas: m.getCanvas(), context: gl, antialias: true });
+    this.renderer.autoClear = false;
+    this.P = new THREE.Matrix4().set(1,0,0,0, 0,0,1,0, 0,1,0,0, 0,0,0,1);   // (восток, вверх, юг) → (x, z, y) Меркатора
+    this.m = m;
+  },
+  // модель грузится только когда включён 3D-макет (а не при открытии страницы)
+  loadModel() {
+    if (this.ready || this.loading || !this.m) return; this.loading = true; const m = this.m;
+    st.textContent = '— загрузка…';
+    const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
+    loader.load('kvartal3d.glb?v=1', g => {
+      g.scene.traverse(o => { if (o.isMesh) { o.material.flatShading = true; o.material.needsUpdate = true; } });
+      g.scene.updateMatrixWorld(true);
+      g.scene.traverse(o => { if (o.isMesh) { o.geometry.computeBoundingBox(); const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+        if (b.max.y - b.min.y > 0.5) { const sh = new THREE.Mesh(o.geometry, this.shadowMat); sh.matrixAutoUpdate = false; sh.userData.src = o; sh.renderOrder = 5; this.shadows.add(sh); } } });
+      this.scene.add(g.scene); st.textContent = ''; this.ready = true; this.loading = false; m.triggerRepaint();
+      if (sunPending) { sunPending = false; sunBtn.click(); }
+    }, x => { if (x.total) st.textContent = '— загрузка ' + Math.round(100 * x.loaded / x.total) + '%'; },
+       e => { console.error(e); this.loading = false; st.textContent = ''; sunPending = false;
+         toast('3D-макет не загрузился. Проверьте интернет и включите ещё раз');
+         document.getElementById('chk3d').checked = false; applyLayers(); });
+  },
+  render(gl, args) {
+    // опора — самая высокая точка рельефа по углам участков и центру (рельеф тут «гуляет» на 2–3 м)
+    let elev = null;
+    for (const p of KV_TOCHKI) { const e = map.queryTerrainElevation(p); if (e != null && (elev == null || e > elev)) elev = e; }
+    const mc = maplibregl.MercatorCoordinate.fromLngLat(KV_ORIGIN, (elev || 0) + KV_PODNYAT);
+    const s = mc.meterInMercatorCoordinateUnits();
+    const l = new THREE.Matrix4().makeTranslation(mc.x, mc.y, mc.z).scale(new THREE.Vector3(s, s, s)).multiply(this.P);
+    const mm = args && args.defaultProjectionData ? args.defaultProjectionData.mainMatrix : args;
+    this.camera.projectionMatrix = new THREE.Matrix4().fromArray(mm).multiply(l);
+    this.renderer.resetState(); this.renderer.render(this.scene, this.camera);
+  }
+};
+window.kvLoad = () => kvLayer.loadModel();
+const add3d = () => { if (!map.getLayer('kvartal3d')) map.addLayer(kvLayer, 'plot-line');
+  applyLayers(); };
+if (map.loaded() && map.getLayer('plot-line')) add3d(); else map.on('load', add3d);
+
+// --- Солнце: один проход дня по настоящему положению солнца для координат участка ---
+// дата — 20 марта (весеннее равноденствие): «средняя» траектория года; время местное (UTC+4).
+// Формула — упрощённый алгоритм Астрономического альманаха (NOAA), точность ~0,1–0,3°;
+// сверено с библиотекой astral: восход 07:06–07:07, закат 19:14, полдень 13:10, высота в полдень 49,8°.
+// Тени: проекция тел квартала на землю по направлению на солнце (тени на земле и мощении; тени на соседних фасадах не рисуются).
+function sunPos(ms, lat, lon) {
+  const D = Math.PI / 180, d = ms / 86400000 + 2440587.5 - 2451545.0;
+  const g = (357.529 + 0.98560028 * d) * D, q = 280.459 + 0.98564736 * d;
+  const L = (q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * D, e = (23.439 - 0.00000036 * d) * D;
+  const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L)), dec = Math.asin(Math.sin(e) * Math.sin(L));
+  const gmst = (18.697374558 + 24.06570982441908 * d) % 24, H = ((gmst * 15 + lon) * D) - ra, f = lat * D;
+  const alt = Math.asin(Math.sin(f) * Math.sin(dec) + Math.cos(f) * Math.cos(dec) * Math.cos(H));
+  const az = Math.atan2(-Math.sin(H), Math.tan(dec) * Math.cos(f) - Math.sin(f) * Math.cos(H));
+  return { alt: alt / D, az: ((az / D) + 360) % 360 };
+}
+const SUN_DAY0 = Date.UTC(2026, 2, 20) - 4 * 3600000;   // 20 марта 2026, 00:00 по Еревану
+const hm = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(Math.floor(m % 60)).padStart(2, '0');
+let sunRaf = null, sunRise = null, sunSet = null;
+for (let m = 0; m < 1440; m++) { if (sunPos(SUN_DAY0 + m * 60000, KV_ORIGIN[1], KV_ORIGIN[0]).alt > -0.833) { if (sunRise == null) sunRise = m; sunSet = m; } }
+const SH_Y = 0.06, S = new THREE.Matrix4();
+function setSun(m) {
+  const L = kvLayer, p = sunPos(SUN_DAY0 + m * 60000, KV_ORIGIN[1], KV_ORIGIN[0]), D = Math.PI / 180, a = p.az * D, h = Math.max(0.5, p.alt) * D;
+  const lx = Math.sin(a) * Math.cos(h), ly = Math.sin(h), lz = -Math.cos(a) * Math.cos(h);   // на солнце: x восток, y вверх, z юг
+  L.sun.position.set(lx * 800, ly * 800, lz * 800);
+  const k = Math.max(0, Math.min(1, p.alt / 15));   // у горизонта свет тёплый и слабее
+  L.sun.color.setRGB(1, 0.72 + 0.28 * k, 0.5 + 0.5 * k); L.sun.intensity = 1.2 + 1.8 * k; L.amb.intensity = 0.6 + 0.5 * k; L.sun2.intensity = 0.15;
+  // проекция точки (x, y, z) на плоскость земли y = SH_Y вдоль луча солнца
+  S.set(1, -lx / ly, 0, lx / ly * SH_Y,  0, 0, 0, SH_Y,  0, -lz / ly, 1, lz / ly * SH_Y,  0, 0, 0, 1);
+  L.shadows.visible = p.alt > 3;   // у самого горизонта тень уходит в бесконечность — не рисуем
+  for (const sh of L.shadows.children) sh.matrix.multiplyMatrices(S, sh.userData.src.matrixWorld);
+  map.triggerRepaint(); return p;
+}
+const sunBtn = document.getElementById('sunBtn'), sunReset = document.getElementById('sunReset'), sunTime = document.getElementById('sunTime');
+let sunState = 'idle', sunM = null, sunPending = false;   // idle — выключено, run — идёт день, pause — время остановлено
+const SUN_DUR = 20000;                // весь день от восхода до заката — 20 с
+function sunShow(m) {
+  sunM = m; const p = setSun(m); sunTime.value = Math.round(m);
+  document.getElementById('sunInfo').textContent = '20 марта · ' + hm(m) + ' · солнце ' + Math.max(0, p.alt).toFixed(0) + '° над горизонтом, азимут ' + p.az.toFixed(0) + '°';
+}
+function sunUI() {
+  sunBtn.textContent = sunState === 'run' ? '⏸ Пауза' : sunState === 'pause' ? '▶ Дальше' : '☀ Солнце: день';
+  sunReset.style.display = sunTime.style.display = sunState === 'idle' ? 'none' : '';
+}
+function stopSun(done) {
+  const L = kvLayer; cancelAnimationFrame(sunRaf); sunRaf = null; sunState = 'idle'; sunM = null;
+  L.sun.position.set(-0.5, 1, 0.8); L.sun.color.setRGB(1, 1, 1); L.sun.intensity = 2.2; L.sun2.intensity = 0.8; L.amb.intensity = 1.6;
+  L.shadows.visible = false; map.triggerRepaint(); sunUI();
+  const noon = sunPos(SUN_DAY0 + (sunRise + sunSet) / 2 * 60000, KV_ORIGIN[1], KV_ORIGIN[0]);
+  document.getElementById('sunInfo').textContent = done ? '20 марта (равноденствие): восход ' + hm(sunRise) + ', закат ' + hm(sunSet) + ', в полдень солнце на ' + noon.alt.toFixed(0) + '° над горизонтом' : '';
+}
+function runSun() {
+  sunState = 'run'; sunUI();
+  const m0 = sunM == null ? sunRise : sunM, t0 = performance.now(), rate = (sunSet - sunRise) / SUN_DUR;
+  const step = () => {
+    const m = Math.min(sunSet, m0 + (performance.now() - t0) * rate); sunShow(m);
+    if (m < sunSet) sunRaf = requestAnimationFrame(step); else stopSun(true);
+  };
+  sunRaf = requestAnimationFrame(step);
+}
+function pauseSun() { cancelAnimationFrame(sunRaf); sunRaf = null; sunState = 'pause'; sunUI(); }
+sunTime.min = sunRise; sunTime.max = sunSet;
+sunBtn.onclick = () => {
+  const L = kvLayer; if (!L.sun || !map.getLayer('kvartal3d')) return;
+  if (sunState === 'run') return pauseSun();
+  if (sunState === 'pause') return runSun();
+  const c3 = document.getElementById('chk3d'); if (!c3.checked) { c3.checked = true; applyLayers(); }   // солнце видно только на 3D-макете
+  if (!L.ready) { sunPending = true; toast('Загружаем 3D-макет…'); return; }   // солнце запустится само после загрузки
+  if (map.getZoom() < 15) map.flyTo({ ...HOME, duration:1500, essential:true });
+  sunM = null; runSun();
+};
+sunReset.onclick = () => stopSun(false);
+document.getElementById('chk3d').addEventListener('change', e => { if (!e.target.checked && sunState !== 'idle') stopSun(false); });   // 3D выключили — солнце сбросить
+sunTime.oninput = () => { if (sunState === 'run') pauseSun(); sunShow(+sunTime.value); };
+
+// Приложение: иконка на компьютере / телефоне и «Поделиться» ссылкой
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+(() => {
+  const URL0 = 'https://grigorysaak.github.io/vagharshapat-map/';
+  const inst = document.getElementById('appInstall'), shr = document.getElementById('appShare'), hint = document.getElementById('appHint');
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (standalone) inst.style.display = 'none';            // уже открыто как приложение
+  let ev = null;
+  addEventListener('beforeinstallprompt', e => { e.preventDefault(); ev = e; });
+  addEventListener('appinstalled', () => { inst.style.display = 'none'; toast('Иконка установлена'); });
+  const say = t => { hint.textContent = t; hint.style.display = 'block'; };
+  inst.onclick = async () => {
+    if (ev) { ev.prompt(); await ev.userChoice; ev = null; return; }
+    const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    if (ios) say('iPhone / iPad: кнопка «Поделиться» внизу Safari → «На экран „Домой“».');
+    else if (/Android/.test(ua)) say('Android: меню браузера ⋮ → «Добавить на главный экран».');
+    else if (/Safari/.test(ua) && !/Chrome|Chromium|Edg/.test(ua)) say('Safari на Mac: меню «Файл» → «Добавить в Dock».');
+    else say('Меню браузера ⋮ → «Трансляция, сохранение и отправка» → «Установить страницу как приложение».');
+  };
+  shr.onclick = async () => {
+    if (navigator.share) { try { await navigator.share({ title:'Nor Zvartnots Hayat — карта проекта', url:URL0 }); } catch (e) {} return; }
+    try { await navigator.clipboard.writeText(URL0); toast('Ссылка скопирована'); } catch (e) { say(URL0); }
+  };
+  // простая копия ссылки в буфер обмена — потом вставить в WhatsApp, браузер, письмо
+  document.getElementById('appLink').textContent = URL0;
+  document.getElementById('appCopy').onclick = async () => {
+    let ok = false;
+    try { await navigator.clipboard.writeText(URL0); ok = true; } catch (e) {
+      const t = document.createElement('textarea'); t.value = URL0; t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select(); try { ok = document.execCommand('copy'); } catch (e2) {} t.remove();
+    }
+    toast(ok ? 'Ссылка скопирована — вставьте, где нужно' : 'Не удалось скопировать — выделите ссылку ниже и скопируйте');
+  };
+})();
+</script>
+</body>
+</html>
